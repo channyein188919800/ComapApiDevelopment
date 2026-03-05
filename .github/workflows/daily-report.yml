@@ -1,0 +1,65 @@
+name: Daily ComAp Report
+
+on:
+  schedule:
+    - cron: "30 2 * * *"  # 09:00 Asia/Yangon (UTC+6:30)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  run-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Build .env.secret
+        run: |
+          cat > .env.secret << 'EOF'
+          COMAP_KEY=${{ secrets.COMAP_KEY }}
+          CLIENT_ID=${{ secrets.CLIENT_ID }}
+          SECRET=${{ secrets.SECRET }}
+          LOGIN_ID=${{ secrets.LOGIN_ID }}
+          MAILTRAP_HOST=${{ secrets.MAILTRAP_HOST }}
+          MAILTRAP_PORT=${{ secrets.MAILTRAP_PORT }}
+          MAILTRAP_USERNAME=${{ secrets.MAILTRAP_USERNAME }}
+          MAILTRAP_PASSWORD=${{ secrets.MAILTRAP_PASSWORD }}
+          MAIL_FROM=${{ secrets.MAIL_FROM }}
+          MAIL_TO=${{ secrets.MAIL_TO }}
+          EOF
+
+      - name: Build .env.shared
+        run: |
+          cat > .env.shared << 'EOF'
+          GENSET_ID_Main=${{ secrets.GENSET_ID_MAIN }}
+          GENSET_ID_1=${{ secrets.GENSET_ID_1 }}
+          GENSET_ID_2=${{ secrets.GENSET_ID_2 }}
+          GENSET_ID_3=${{ secrets.GENSET_ID_3 }}
+          GENSET_ID_4=${{ secrets.GENSET_ID_4 }}
+          FILENAME=Energy_Report.xlsx
+          SNAPSHOT_DB=testing/comap_snapshots.db
+          COMPANY_NAME=Logic link Company Ltd
+          REPORT_TITLE=Pun Hlaing Energy consumption per day
+          EOF
+
+      - name: Run report
+        run: python testing/test-history.py
+
+      - name: Persist snapshot DB for next run
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add testing/comap_snapshots.db
+          git diff --staged --quiet || git commit -m "Update ComAp snapshot DB"
+          git push
