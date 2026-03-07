@@ -11,7 +11,7 @@ import logging
 import smtplib
 import sqlite3
 import ssl
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -92,6 +92,32 @@ def get_latest_snapshot(conn: sqlite3.Connection):
         "SELECT id, run_time FROM snapshot_runs ORDER BY id DESC LIMIT 1"
     ).fetchone()
     return row
+
+
+def parse_run_time(text: str):
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%m/%d/%Y %H:%M"):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def get_snapshot_near_target(conn: sqlite3.Connection, target_dt: datetime):
+    rows = conn.execute(
+        "SELECT id, run_time FROM snapshot_runs ORDER BY id ASC"
+    ).fetchall()
+    best_row = None
+    best_delta = None
+    for row in rows:
+        parsed = parse_run_time(row[1])
+        if parsed is None:
+            continue
+        delta = abs((parsed - target_dt).total_seconds())
+        if best_delta is None or delta < best_delta:
+            best_delta = delta
+            best_row = row
+    return best_row
 
 
 def get_snapshot_value_map(conn: sqlite3.Connection, run_id: int) -> dict:
@@ -350,7 +376,9 @@ if token is not None:
     if not db_path.is_absolute():
         db_path = BASE_DIR / db_path
 
-    generated_at = datetime.now().strftime("%m/%d/%Y %H:%M")
+    now_dt = datetime.now()
+    generated_at = now_dt.strftime("%m/%d/%Y %H:%M")
+    run_time_storage = now_dt.strftime("%Y-%m-%d %H:%M:%S")
     warnings = []
 
     main_values = wsv.values(shared["GENSET_ID_Main"])
@@ -394,27 +422,50 @@ if token is not None:
 
     sum_total_kwh = solar_kwh + m_kwh_i + genset_total_kwh
 
-    solar_pct = safe_percent(solar_kwh, sum_total_kwh)
-    grid_pct = safe_percent(m_kwh_i, sum_total_kwh)
-    genset_pct = safe_percent(genset_total_kwh, sum_total_kwh)
+    conn = ensure_db(db_path)
+    target_dt = now_dt - timedelta(days=1)
+    baseline = get_snapshot_near_target(conn, target_dt)
+    previous_run_time = baseline[1] if baseline else None
+    previous_map = get_snapshot_value_map(conn, baseline[0]) if baseline else {}
+
+    previous_solar_mwh = previous_map.get("Solar MWh", {}).get("value_num")
+    previous_grid_kwh = previous_map.get("M kWh I", {}).get("value_num")
+    previous_genset_total_kwh = previous_map.get("Genset Total kWh (Calculated)", {}).get("value_num")
+
+    if previous_solar_mwh is None or previous_grid_kwh is None or previous_genset_total_kwh is None:
+        warnings.append("24-hour baseline not found. Usage shown as current values on first run.")
+        usage_solar_mwh = solar_mwh
+        usage_grid_kwh = m_kwh_i
+        usage_genset_kwh = genset_total_kwh
+    else:
+        usage_solar_mwh = solar_mwh - previous_solar_mwh
+        usage_grid_kwh = m_kwh_i - previous_grid_kwh
+        usage_genset_kwh = genset_total_kwh - previous_genset_total_kwh
+
+    usage_sum_total_kwh = (usage_solar_mwh * 1000.0) + usage_grid_kwh + usage_genset_kwh
+    usage_solar_pct = safe_percent(usage_solar_mwh * 1000.0, usage_sum_total_kwh)
+    usage_grid_pct = safe_percent(usage_grid_kwh, usage_sum_total_kwh)
+    usage_genset_pct = safe_percent(usage_genset_kwh, usage_sum_total_kwh)
 
     report_rows = [
-        ("Solar Energy consumption", round(solar_mwh, 3), "MWh"),
-        ("Grid Energy consumption", round(m_kwh_i, 3), "kWh"),
-        ("Genset Total kWh", round(genset_total_kwh, 3), "kWh"),
-        ("Sum of Total kWh", round(sum_total_kwh, 3), "kWh"),
-        ("Avg% Solar kWh", f"{solar_pct:.2f}%", "%"),
-        ("Avg% Grid kWh", f"{grid_pct:.2f}%", "%"),
-        ("Avg% Genset Total", f"{genset_pct:.2f}%", "%"),
+        ("Solar Energy consumption", round(usage_solar_mwh, 3), "MWh"),
+        ("Grid Energy consumption", round(usage_grid_kwh, 3), "kWh"),
+        ("Genset Total kWh", round(usage_genset_kwh, 3), "kWh"),
+        ("Sum of Total kWh", round(usage_sum_total_kwh, 3), "kWh"),
+        ("Avg% Solar kWh", f"{usage_solar_pct:.2f}%", "%"),
+        ("Avg% Grid kWh", f"{usage_grid_pct:.2f}%", "%"),
+        ("Avg% Genset Total", f"{usage_genset_pct:.2f}%", "%"),
     ]
 
-    conn = ensure_db(db_path)
-    latest = get_latest_snapshot(conn)
-    previous_run_time = latest[1] if latest else None
-    previous_map = get_snapshot_value_map(conn, latest[0]) if latest else {}
-
     differential_rows = build_differentials(main_values, previous_map)
-    save_snapshot(conn, generated_at, main_values)
+    metrics_for_snapshot = list(main_values)
+    metrics_for_snapshot.extend(
+        [
+            {"name": "Genset Total kWh (Calculated)", "value": genset_total_kwh, "unit": "kWh", "guid": ""},
+            {"name": "Sum of Total kWh (Calculated)", "value": sum_total_kwh, "unit": "kWh", "guid": ""},
+        ]
+    )
+    save_snapshot(conn, run_time_storage, metrics_for_snapshot)
     conn.close()
 
     build_excel_report(
