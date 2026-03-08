@@ -13,8 +13,6 @@ import sqlite3
 import ssl
 from datetime import datetime, timedelta
 from email.message import EmailMessage
-from email.utils import make_msgid
-from html import escape
 from pathlib import Path
 
 from comap import api
@@ -229,13 +227,14 @@ def build_excel_report(
     summary_sheet.merge_cells("C2:D3")
     summary_sheet["C2"] = f"{company_name.upper()}"
     summary_sheet["C2"].font = Font(bold=True, size=18, color="7F6000")
-    summary_sheet["C2"].alignment = Alignment(horizontal="left", vertical="center")
+    summary_sheet["C2"].alignment = Alignment(horizontal="center", vertical="center")
     if LOGO_PATH.exists():
         try:
             logo = XLImage(str(LOGO_PATH))
-            logo.width = 240
-            logo.height = 80
-            summary_sheet.add_image(logo, "A1")
+            logo.width = 360
+            logo.height = 90
+            summary_sheet.add_image(logo, "C1")
+            summary_sheet["C2"] = ""
         except Exception:
             # Keep report generation working even if image loading fails.
             pass
@@ -298,27 +297,6 @@ def send_email_with_attachment(subject: str, body: str, attachment_path: Path) -
     message["To"] = secrets["MAIL_TO"]
     message["Subject"] = subject
     message.set_content(body)
-
-    if LOGO_PATH.exists():
-        logo_cid = make_msgid(domain="logiclink.local")
-        html_body = (
-            "<html><body>"
-            "<p><img src='cid:{cid}' alt='Logic Link Logo' style='max-width:240px;height:auto;'></p>"
-            "<p>{body}</p>"
-            "</body></html>"
-        ).format(
-            cid=logo_cid[1:-1],
-            body=escape(body).replace("\n", "<br>"),
-        )
-        message.add_alternative(html_body, subtype="html")
-        with open(LOGO_PATH, "rb") as logo_file:
-            message.get_payload()[1].add_related(
-                logo_file.read(),
-                maintype="image",
-                subtype="png",
-                cid=logo_cid,
-                filename=LOGO_PATH.name,
-            )
 
     with open(attachment_path, "rb") as file:
         data = file.read()
