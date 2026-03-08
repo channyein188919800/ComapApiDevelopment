@@ -205,8 +205,6 @@ def build_excel_report(
     previous_run_time,
     report_rows: list[tuple[str, object, str]],
     warnings: list[str],
-    all_values: list[dict],
-    differential_rows: list[dict],
 ) -> None:
     workbook = Workbook()
 
@@ -226,16 +224,16 @@ def build_excel_report(
     stripe_fill = PatternFill(fill_type="solid", fgColor="D9E1F2")
     white_fill = PatternFill(fill_type="solid", fgColor="FFFFFF")
 
-    summary_sheet.merge_cells("B2:D3")
-    summary_sheet["B2"] = f"{company_name.upper()}"
-    summary_sheet["B2"].font = Font(bold=True, size=18, color="7F6000")
-    summary_sheet["B2"].alignment = Alignment(horizontal="left", vertical="center")
+    summary_sheet.merge_cells("C2:D3")
+    summary_sheet["C2"] = f"{company_name.upper()}"
+    summary_sheet["C2"].font = Font(bold=True, size=18, color="7F6000")
+    summary_sheet["C2"].alignment = Alignment(horizontal="left", vertical="center")
     if LOGO_PATH.exists():
         try:
             logo = XLImage(str(LOGO_PATH))
-            logo.width = 300
-            logo.height = 70
-            summary_sheet.add_image(logo, "B1")
+            logo.width = 240
+            logo.height = 80
+            summary_sheet.add_image(logo, "A1")
         except Exception:
             # Keep report generation working even if image loading fails.
             pass
@@ -279,34 +277,6 @@ def build_excel_report(
                 cell.alignment = Alignment(horizontal="right", vertical="center")
             else:
                 cell.alignment = Alignment(horizontal="left", vertical="center")
-
-    # Sheet 2: all current values from main controller
-    values_sheet = workbook.create_sheet(title="All Values")
-    values_sheet.append(["Name", "Value", "Unit", "GUID"])
-    for item in all_values:
-        values_sheet.append(
-            [
-                excel_safe(item.get("name", "")),
-                excel_safe(item.get("value", "")),
-                excel_safe(item.get("unit", "")),
-                excel_safe(item.get("guid", "")),
-            ]
-        )
-
-    # Sheet 3: differential
-    diff_sheet = workbook.create_sheet(title="Differential")
-    diff_sheet.append(["Name", "Current", "Previous", "Delta", "Unit", "GUID"])
-    for row in differential_rows:
-        diff_sheet.append(
-            [
-                row["name"],
-                row["current"],
-                row["previous"],
-                row["delta"],
-                row["unit"],
-                row["guid"],
-            ]
-        )
 
     if warnings:
         warn_row = header_row + len(report_rows) + 2
@@ -457,7 +427,6 @@ if token is not None:
         ("Avg% Genset Total", f"{usage_genset_pct:.2f}%", "%"),
     ]
 
-    differential_rows = build_differentials(main_values, previous_map)
     metrics_for_snapshot = list(main_values)
     metrics_for_snapshot.extend(
         [
@@ -476,8 +445,6 @@ if token is not None:
         previous_run_time,
         report_rows,
         warnings,
-        main_values,
-        differential_rows,
     )
 
     print("Excel report generated:", str(report_path))
