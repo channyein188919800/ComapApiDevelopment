@@ -18,8 +18,10 @@ from pathlib import Path
 from comap import api
 from dotenv import dotenv_values
 from openpyxl.drawing.image import Image as XLImage
+from openpyxl.drawing.spreadsheet_drawing import AnchorMarker, OneCellAnchor
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils.units import pixels_to_EMU
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 LOGO_PATH = BASE_DIR / "testing" / "logic-link-logo.png"
@@ -217,6 +219,9 @@ def build_excel_report(
     summary_sheet.column_dimensions["B"].width = 38
     summary_sheet.column_dimensions["C"].width = 36
     summary_sheet.column_dimensions["D"].width = 18
+    summary_sheet.row_dimensions[1].height = 24
+    summary_sheet.row_dimensions[2].height = 24
+    summary_sheet.row_dimensions[3].height = 24
 
     thin = Side(style="thin", color="000000")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -231,9 +236,36 @@ def build_excel_report(
     if LOGO_PATH.exists():
         try:
             logo = XLImage(str(LOGO_PATH))
-            logo.width = 360
-            logo.height = 90
-            summary_sheet.add_image(logo, "C1")
+            logo.width = 430
+            logo.height = 88
+
+            # Center the logo across columns A:D with a small top margin.
+            col_widths_px = [
+                int(summary_sheet.column_dimensions[col].width * 7) for col in ("A", "B", "C", "D")
+            ]
+            total_width_px = sum(col_widths_px)
+            start_x_px = max((total_width_px - int(logo.width)) // 2, 0)
+
+            col_idx = 0
+            x_in_col_px = start_x_px
+            for i, width_px in enumerate(col_widths_px):
+                if x_in_col_px < width_px:
+                    col_idx = i
+                    break
+                x_in_col_px -= width_px
+
+            logo.anchor = OneCellAnchor(
+                _from=AnchorMarker(
+                    col=col_idx,
+                    colOff=pixels_to_EMU(x_in_col_px),
+                    row=0,
+                    rowOff=pixels_to_EMU(4),
+                ),
+                ext=None,
+            )
+            logo.anchor.ext.cx = pixels_to_EMU(int(logo.width))
+            logo.anchor.ext.cy = pixels_to_EMU(int(logo.height))
+            summary_sheet.add_image(logo)
             summary_sheet["C2"] = ""
         except Exception:
             # Keep report generation working even if image loading fails.
