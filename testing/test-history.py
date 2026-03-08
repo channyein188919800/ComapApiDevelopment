@@ -13,6 +13,8 @@ import sqlite3
 import ssl
 from datetime import datetime, timedelta
 from email.message import EmailMessage
+from email.utils import make_msgid
+from html import escape
 from pathlib import Path
 
 from comap import api
@@ -296,6 +298,27 @@ def send_email_with_attachment(subject: str, body: str, attachment_path: Path) -
     message["To"] = secrets["MAIL_TO"]
     message["Subject"] = subject
     message.set_content(body)
+
+    if LOGO_PATH.exists():
+        logo_cid = make_msgid(domain="logiclink.local")
+        html_body = (
+            "<html><body>"
+            "<p><img src='cid:{cid}' alt='Logic Link Logo' style='max-width:240px;height:auto;'></p>"
+            "<p>{body}</p>"
+            "</body></html>"
+        ).format(
+            cid=logo_cid[1:-1],
+            body=escape(body).replace("\n", "<br>"),
+        )
+        message.add_alternative(html_body, subtype="html")
+        with open(LOGO_PATH, "rb") as logo_file:
+            message.get_payload()[1].add_related(
+                logo_file.read(),
+                maintype="image",
+                subtype="png",
+                cid=logo_cid,
+                filename=LOGO_PATH.name,
+            )
 
     with open(attachment_path, "rb") as file:
         data = file.read()
