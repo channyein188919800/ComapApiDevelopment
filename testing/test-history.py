@@ -389,8 +389,8 @@ if token is not None:
 
     solar_mwh_raw = main_value_map.get("Solar MWh")
     m_kwh_i_raw = main_value_map.get("M kWh I")
-    f1_mwh_raw = main_value_map.get("F-1 MWh")
-    f2_mwh_raw = main_value_map.get("F-2 MWh")
+    f1_mwh_raw = main_value_map.get("F-1 MWH")
+    f2_mwh_raw = main_value_map.get("F-2 MWH")
     f3_mwh_raw = main_value_map.get("F-3 MWh")
 
     try:
@@ -479,15 +479,15 @@ if token is not None:
 
     report_rows = [
         ("Solar Energy consumption", round(usage_solar_mwh, 3), "MWh"),
-        ("F-1 MWh", round(f1_mwh, 3), "MWh"),
-        ("F-2 MWh", round(f2_mwh, 3), "MWh"),
-        ("F-3 MWh", round(f3_mwh, 3), "MWh"),
         ("Grid Energy consumption", round(usage_grid_kwh, 3), "kWh"),
         ("Genset Total kWh", round(usage_genset_kwh, 3), "kWh"),
         ("Sum of Total kWh", round(usage_sum_total_kwh, 3), "kWh"),
         ("Avg% Solar kWh", f"{usage_solar_pct:.2f}%", "%"),
         ("Avg% Grid kWh", f"{usage_grid_pct:.2f}%", "%"),
         ("Avg% Genset Total", f"{usage_genset_pct:.2f}%", "%"),
+          ("F-1 MWh", round(f1_mwh, 3), "MWh"),
+        ("F-2 MWh", round(f2_mwh, 3), "MWh"),
+        ("F-3 MWh", round(f3_mwh, 3), "MWh"),
     ]
 
     metrics_for_snapshot = list(main_values)
