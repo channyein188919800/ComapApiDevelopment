@@ -389,6 +389,9 @@ if token is not None:
 
     solar_mwh_raw = main_value_map.get("Solar MWh")
     m_kwh_i_raw = main_value_map.get("M kWh I")
+    f1_mwh_raw = main_value_map.get("F-1 MWh")
+    f2_mwh_raw = main_value_map.get("F-2 MWh")
+    f3_mwh_raw = main_value_map.get("F-3 MWh")
 
     try:
         solar_mwh = parse_number(solar_mwh_raw) if solar_mwh_raw is not None else 0.0
@@ -406,6 +409,30 @@ if token is not None:
         warnings.append("Solar MWh not found; treated as 0")
     if m_kwh_i_raw is None:
         warnings.append("M kWh I not found; treated as 0")
+    if f1_mwh_raw is None:
+        warnings.append("F-1 MWh not found; treated as 0")
+    if f2_mwh_raw is None:
+        warnings.append("F-2 MWh not found; treated as 0")
+    if f3_mwh_raw is None:
+        warnings.append("F-3 MWh not found; treated as 0")
+
+    try:
+        f1_mwh = parse_number(f1_mwh_raw) if f1_mwh_raw is not None else 0.0
+    except ValueError:
+        f1_mwh = 0.0
+        warnings.append("F-1 MWh is not numeric; treated as 0")
+
+    try:
+        f2_mwh = parse_number(f2_mwh_raw) if f2_mwh_raw is not None else 0.0
+    except ValueError:
+        f2_mwh = 0.0
+        warnings.append("F-2 MWh is not numeric; treated as 0")
+
+    try:
+        f3_mwh = parse_number(f3_mwh_raw) if f3_mwh_raw is not None else 0.0
+    except ValueError:
+        f3_mwh = 0.0
+        warnings.append("F-3 MWh is not numeric; treated as 0")
 
     solar_kwh = solar_mwh * 1000.0
 
@@ -452,6 +479,9 @@ if token is not None:
 
     report_rows = [
         ("Solar Energy consumption", round(usage_solar_mwh, 3), "MWh"),
+        ("F-1 MWh", round(f1_mwh, 3), "MWh"),
+        ("F-2 MWh", round(f2_mwh, 3), "MWh"),
+        ("F-3 MWh", round(f3_mwh, 3), "MWh"),
         ("Grid Energy consumption", round(usage_grid_kwh, 3), "kWh"),
         ("Genset Total kWh", round(usage_genset_kwh, 3), "kWh"),
         ("Sum of Total kWh", round(usage_sum_total_kwh, 3), "kWh"),
@@ -482,9 +512,11 @@ if token is not None:
 
     print("Excel report generated:", str(report_path))
     email_body = (
-        f"Please find attached the ComAp Excel report for {company_name}.\n"
-        f"Generated at {generated_at}.\n"
-        f"Comparison baseline: {previous_run_time if previous_run_time else 'No previous snapshot'}"
+        "Dear Sir,\n"
+        "Please find attached the daily energy consumption report generated via the "
+        "ComAp WebSupervisor API through the LPI local server. The report covers one "
+        "main supply, one solar source, three feeders, and four gensets.\n"
+        "Best regards,"
     )
-    send_email_with_attachment("ComAp Current Values Report", email_body, report_path)
+    send_email_with_attachment("Daily Energy Consumption Report", email_body, report_path)
     print("Email sent with Excel attachment.")
