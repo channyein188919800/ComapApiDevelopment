@@ -460,16 +460,32 @@ if token is not None:
 
     previous_solar_mwh = previous_map.get("Solar MWh", {}).get("value_num")
     previous_grid_kwh = previous_map.get("M kWh I", {}).get("value_num")
+    previous_f1_mwh = previous_map.get("F-1 MWh", {}).get("value_num")
+    previous_f2_mwh = previous_map.get("F-2 MWh", {}).get("value_num")
+    previous_f3_mwh = previous_map.get("F-3 MWh", {}).get("value_num")
     previous_genset_total_kwh = previous_map.get("Genset Total kWh (Calculated)", {}).get("value_num")
 
-    if previous_solar_mwh is None or previous_grid_kwh is None or previous_genset_total_kwh is None:
+    if (
+        previous_solar_mwh is None
+        or previous_grid_kwh is None
+        or previous_f1_mwh is None
+        or previous_f2_mwh is None
+        or previous_f3_mwh is None
+        or previous_genset_total_kwh is None
+    ):
         warnings.append("24-hour baseline not found. Usage shown as current values on first run.")
         usage_solar_mwh = solar_mwh
         usage_grid_kwh = m_kwh_i
+        usage_f1_mwh = f1_mwh
+        usage_f2_mwh = f2_mwh
+        usage_f3_mwh = f3_mwh
         usage_genset_kwh = genset_total_kwh
     else:
         usage_solar_mwh = solar_mwh - previous_solar_mwh
         usage_grid_kwh = m_kwh_i - previous_grid_kwh
+        usage_f1_mwh = f1_mwh - previous_f1_mwh
+        usage_f2_mwh = f2_mwh - previous_f2_mwh
+        usage_f3_mwh = f3_mwh - previous_f3_mwh
         usage_genset_kwh = genset_total_kwh - previous_genset_total_kwh
 
     usage_sum_total_kwh = (usage_solar_mwh * 1000.0) + usage_grid_kwh + usage_genset_kwh
@@ -479,15 +495,15 @@ if token is not None:
 
     report_rows = [
         ("Solar Energy consumption", round(usage_solar_mwh, 3), "MWh"),
+        ("F-1 MWh", round(usage_f1_mwh, 3), "MWh"),
+        ("F-2 MWh", round(usage_f2_mwh, 3), "MWh"),
+        ("F-3 MWh", round(usage_f3_mwh, 3), "MWh"),
         ("Grid Energy consumption", round(usage_grid_kwh, 3), "kWh"),
         ("Genset Total kWh", round(usage_genset_kwh, 3), "kWh"),
         ("Sum of Total kWh", round(usage_sum_total_kwh, 3), "kWh"),
         ("Avg% Solar kWh", f"{usage_solar_pct:.2f}%", "%"),
         ("Avg% Grid kWh", f"{usage_grid_pct:.2f}%", "%"),
         ("Avg% Genset Total", f"{usage_genset_pct:.2f}%", "%"),
-          ("F-1 MWh", round(f1_mwh, 3), "MWh"),
-        ("F-2 MWh", round(f2_mwh, 3), "MWh"),
-        ("F-3 MWh", round(f3_mwh, 3), "MWh"),
     ]
 
     metrics_for_snapshot = list(main_values)
