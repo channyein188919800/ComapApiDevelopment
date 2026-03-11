@@ -495,15 +495,15 @@ if token is not None:
 
     report_rows = [
         ("Solar Energy consumption", round(usage_solar_mwh, 3), "MWh"),
-        ("F-1 MWh", round(usage_f1_mwh, 3), "MWh"),
-        ("F-2 MWh", round(usage_f2_mwh, 3), "MWh"),
-        ("F-3 MWh", round(usage_f3_mwh, 3), "MWh"),
         ("Grid Energy consumption", round(usage_grid_kwh, 3), "kWh"),
         ("Genset Total kWh", round(usage_genset_kwh, 3), "kWh"),
         ("Sum of Total kWh", round(usage_sum_total_kwh, 3), "kWh"),
         ("Avg% Solar kWh", f"{usage_solar_pct:.2f}%", "%"),
         ("Avg% Grid kWh", f"{usage_grid_pct:.2f}%", "%"),
         ("Avg% Genset Total", f"{usage_genset_pct:.2f}%", "%"),
+        ("F-1 MWh", round(usage_f1_mwh, 3), "MWh"),
+        ("F-2 MWh", round(usage_f2_mwh, 3), "MWh"),
+        ("F-3 MWh", round(usage_f3_mwh, 3), "MWh"),
     ]
 
     metrics_for_snapshot = list(main_values)
