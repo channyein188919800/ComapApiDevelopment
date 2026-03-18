@@ -374,10 +374,8 @@ if token is not None:
     if not report_path.is_absolute():
         report_path = BASE_DIR / report_path
 
-    db_file = shared.get("SNAPSHOT_DB", "testing/comap_snapshots.db")
-    db_path = Path(db_file)
-    if not db_path.is_absolute():
-        db_path = BASE_DIR / db_path
+    # Use a fixed absolute path to avoid creating a new DB per run
+    db_path = Path("/opt/comap-report/data/comap_snapshots.db")
 
     now_dt = datetime.now()
     generated_at = now_dt.strftime("%m/%d/%Y %H:%M")
